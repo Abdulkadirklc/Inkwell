@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/Abdulkadirklc/Inkwell/releases)
 
-[Features](#features) • [Installation](#installation) • [Usage](#usage) • [Building](#building)
+[What is Inkwell?](#-what-is-inkwell) • [Features](#-features) • [Installation](#-installation) • [Usage](#%EF%B8%8F-usage) • [File Formats](#-file-formats)
 
 ---
 
@@ -265,19 +265,6 @@ Converts to standard Markdown:
   "exportedAt": "2024-01-01T12:00:00.000Z"
 }
 ```
-
----
-
-## 🔮 Roadmap
-
-- [ ] File associations (Open .ink files with Inkwell)
-- [ ] Real-time collaboration
-- [ ] Document templates
-- [ ] Grammar checking
-- [ ] Word count & writing statistics
-- [ ] Custom themes
-- [ ] Plugin system
-- [ ] Mobile companion app
 
 ---
 
