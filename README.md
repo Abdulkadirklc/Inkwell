@@ -18,6 +18,10 @@ Inkwell is a desktop WYSIWYG editor that brings the power of AI to your writing 
 - ✅ **No Subscriptions** - Free forever, no API keys needed
 - ✅ **Cross-Platform** - Windows, macOS, and Linux support
 
+<p align="center">
+  <img src="app_images/interface.png" alt="Inkwell Interface" width="800">
+</p>
+
 ## ✨ Features
 
 ### 📝 Rich Text Editing
