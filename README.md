@@ -1,20 +1,11 @@
 # ✨ Inkwell - AI Writing Assistant
 
-<p align="center">
-  <img src="docs/logo.png" alt="Inkwell Logo" width="128" height="128">
-</p>
+> **A beautiful, offline-first AI writing assistant powered by local LLMs**
 
-<p align="center">
-  <strong>A beautiful, offline-first AI writing assistant powered by local LLMs</strong>
-</p>
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/Abdulkadirklc/Inkwell/releases)
 
-<p align="center">
-  <a href="#features">Features</a> •
-  <a href="#installation">Installation</a> •
-  <a href="#usage">Usage</a> •
-  <a href="#building">Building</a> •
-  <a href="#file-formats">File Formats</a>
-</p>
+[Features](#features) • [Installation](#installation) • [Usage](#usage) • [Building](#building)
 
 ---
 
