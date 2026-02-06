@@ -53,6 +53,12 @@ Inkwell is a desktop WYSIWYG editor that brings the power of AI to your writing 
 4. Watch as the AI **streams** the response in real-time
 5. Your selected text is automatically replaced
 
+### 📚 Context Library (RAG)
+New in v0.2! Give your AI knowledge about your specific documents.
+1. **Upload Files**: Add PDF, Word (.docx), or Text files to the Context tab.
+2. **Context-Aware Chat**: The AI automatically searches your uploaded documents to answer questions.
+3. **Smart Citations**: See exactly which parts of your documents were used in the AI's response.
+
 ### 💬 AI Chat Sidebar
 - **Read-Only Mode**: Ask questions about your document
 - **Agentic Mode**: Let AI directly edit your document
@@ -67,24 +73,22 @@ Inkwell is a desktop WYSIWYG editor that brings the power of AI to your writing 
 - **Top P**: Nucleus sampling threshold
 - **System Prompt**: Customize AI personality
 
-### 🎨 Theme Support
+### 🎨 Theme & Layout
 - **Dark Mode**: Easy on the eyes for night writing
 - **Light Mode**: Clean and bright for daytime
-- **Print Layout**: Visual page breaks to see how your document fits on A4 paper
+- **Visual Pagination**: Work with A4-styled pages with visual gaps for a true print-ready experience
+- **Tables**: Create and manage tables directly in the editor
 
 ### 📤 Export Options
 - **Word (.docx)**: Professional export with image support and proper formatting
-- **Markdown (.md)**: For GitHub, documentation, etc.
-- **JSON**: With metadata for developers
-- **PDF**: Clean A4 PDF export
-- **HTML**: Native save format
+- **PDF**: Clean A4 PDF export with one-click generation
 
 ### 📥 Import Support
 - Markdown (.md)
 - HTML (.html, .htm)
 - Plain text (.txt)
-- JSON (Inkwell format)
-- Word (.docx) (Import text and basic formatting)
+- Word (.docx)
+- PDF (.pdf) (Context only)
 
 ---
 
@@ -183,6 +187,7 @@ chmod +x Inkwell-0.1.0.AppImage
 3. **Agentic Mode** (toggle on):
    - Give commands: "Add a bullet point summary at the end"
    - AI will directly edit your document!
+   - **Note**: For best results, use a capable model like `llama3.2` or larger
 
 ### Saving Your Work
 
