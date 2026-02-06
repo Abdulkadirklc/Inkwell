@@ -7,14 +7,16 @@ import Underline from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import FontFamily from '@tiptap/extension-font-family';
+import { FontSize } from '../extensions/FontSize';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { TableHeader } from '@tiptap/extension-table-header';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import {
     Bold,
     Italic,
     Underline as UnderlineIcon,
-    Heading1,
-    Heading2,
-    Heading3,
     List,
     ListOrdered,
     Quote,
@@ -31,6 +33,15 @@ import {
     Redo,
     Minus,
     Type,
+    ZoomIn,
+    ZoomOut,
+    Table as TableIcon,
+    Trash2,
+    ArrowUp,
+    ArrowDown,
+    ArrowLeft,
+    ArrowRight,
+    Split,
 } from 'lucide-react';
 import { useOllama } from '../hooks/useOllama';
 import { useAppStore } from '../store/appStore';
@@ -38,18 +49,21 @@ import { useAppStore } from '../store/appStore';
 interface EditorProps {
     initialContent?: string;
     onContentChange?: (content: string) => void;
+    onWordCountChange?: (count: number) => void;
     editorRef?: React.MutableRefObject<ReturnType<typeof useEditor> | null>;
 }
 
-export default function Editor({ initialContent = '', onContentChange, editorRef }: EditorProps) {
+export default function Editor({ initialContent = '', onContentChange, onWordCountChange, editorRef }: EditorProps) {
     const [showAiInput, setShowAiInput] = useState(false);
     const [aiCommand, setAiCommand] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [processingStatus, setProcessingStatus] = useState('');
     const [streamingResult, setStreamingResult] = useState('');
     const [textColor, setTextColor] = useState('#000000');
+    const [zoom, setZoom] = useState(100);
     const aiInputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const editorContainerRef = useRef<HTMLDivElement>(null);
 
     const { processSelectionStream } = useOllama();
     const { isOllamaConnected, selectedModel, theme } = useAppStore();
@@ -73,6 +87,13 @@ export default function Editor({ initialContent = '', onContentChange, editorRef
             TextStyle,
             Color,
             FontFamily,
+            FontSize,
+            Table.configure({
+                resizable: true,
+            }),
+            TableRow,
+            TableHeader,
+            TableCell,
         ],
         content: initialContent,
         editorProps: {
@@ -116,10 +137,23 @@ export default function Editor({ initialContent = '', onContentChange, editorRef
                 }
                 return false;
             },
+            handleKeyDown: (_view, event) => {
+                // TAB key for paragraph indentation
+                if (event.key === 'Tab' && !event.shiftKey) {
+                    event.preventDefault();
+                    editor?.chain().focus().insertContent('    ').run();
+                    return true;
+                }
+                return false;
+            },
         },
         onUpdate: ({ editor }) => {
             const html = editor.getHTML();
             onContentChange?.(html);
+            // Update word count and notify parent
+            const text = editor.getText();
+            const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+            onWordCountChange?.(words);
         },
     });
 
@@ -135,6 +169,23 @@ export default function Editor({ initialContent = '', onContentChange, editorRef
             aiInputRef.current.focus();
         }
     }, [showAiInput]);
+
+    // Ctrl+Wheel zoom handler
+    useEffect(() => {
+        const container = editorContainerRef.current;
+        if (!container) return;
+
+        const handleWheel = (e: WheelEvent) => {
+            if (e.ctrlKey) {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -10 : 10;
+                setZoom(prev => Math.min(200, Math.max(50, prev + delta)));
+            }
+        };
+
+        container.addEventListener('wheel', handleWheel, { passive: false });
+        return () => container.removeEventListener('wheel', handleWheel);
+    }, []);
 
     const handleImageUpload = useCallback(() => {
         fileInputRef.current?.click();
@@ -191,22 +242,34 @@ export default function Editor({ initialContent = '', onContentChange, editorRef
         setProcessingStatus('Thinking...');
         setStreamingResult('');
 
+        // Helper to strip <think> tags and their content
+        const stripThinkTags = (text: string): string => {
+            // Remove <think>...</think> blocks
+            return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+        };
+
         try {
             // Use streaming for real-time response
             await processSelectionStream(
                 selectedText,
                 aiCommand.trim(),
                 (chunk, done) => {
-                    setStreamingResult(chunk);
+                    // Strip think tags from the streaming result
+                    const cleanChunk = stripThinkTags(chunk);
+                    setStreamingResult(cleanChunk);
+
                     if (done) {
                         setProcessingStatus('Applying...');
-                        // Replace the selected text with the AI response
-                        editor
-                            .chain()
-                            .focus()
-                            .deleteSelection()
-                            .insertContent(chunk)
-                            .run();
+                        // Replace the selected text with the cleaned AI response
+                        const finalResult = stripThinkTags(chunk);
+                        if (finalResult) {
+                            editor
+                                .chain()
+                                .focus()
+                                .deleteSelection()
+                                .insertContent(finalResult)
+                                .run();
+                        }
 
                         setAiCommand('');
                         setShowAiInput(false);
@@ -266,8 +329,7 @@ export default function Editor({ initialContent = '', onContentChange, editorRef
             {/* Toolbar - Word-like formatting bar */}
             <div className={`flex items-center gap-1 p-2 rounded-t-xl border-b no-print flex-wrap transition-colors ${isDark
                 ? 'glass-dark border-purple-500/10'
-                : 'bg-gray-50 border-gray-200'
-                }`}>
+                : 'bg-gray-50 border-gray-200'}`}>
                 {/* Undo/Redo */}
                 <ToolbarButton
                     onClick={() => editor.chain().focus().undo().run()}
@@ -295,7 +357,7 @@ export default function Editor({ initialContent = '', onContentChange, editorRef
                         className={`text-xs p-1.5 rounded-md focus:outline-none cursor-pointer border-none bg-transparent max-w-[100px] ${isDark
                             ? 'text-gray-300 hover:text-white hover:bg-white/5 option:bg-surface-800'
                             : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                            }`}
+                            } `}
                         defaultValue="Inter"
                     >
                         <option value="Inter" className={isDark ? 'bg-[#1a1b26]' : 'bg-white'}>Default</option>
@@ -337,7 +399,7 @@ export default function Editor({ initialContent = '', onContentChange, editorRef
                     <label className={`flex items-center justify-center p-1.5 rounded-md cursor-pointer transition-colors ${isDark
                         ? 'text-gray-400 hover:text-white hover:bg-white/5'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                        }`}>
+                        } `}>
                         <Type size={16} style={{ color: textColor }} />
                         <input
                             type="color"
@@ -350,31 +412,36 @@ export default function Editor({ initialContent = '', onContentChange, editorRef
 
                 <Divider isDark={isDark} />
 
-                {/* Headings */}
-                <ToolbarButton
-                    onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                    isActive={editor.isActive('heading', { level: 1 })}
-                    title="Heading 1"
-                    isDark={isDark}
-                >
-                    <Heading1 size={16} />
-                </ToolbarButton>
-                <ToolbarButton
-                    onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                    isActive={editor.isActive('heading', { level: 2 })}
-                    title="Heading 2"
-                    isDark={isDark}
-                >
-                    <Heading2 size={16} />
-                </ToolbarButton>
-                <ToolbarButton
-                    onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-                    isActive={editor.isActive('heading', { level: 3 })}
-                    title="Heading 3"
-                    isDark={isDark}
-                >
-                    <Heading3 size={16} />
-                </ToolbarButton>
+                {/* Font Size */}
+                <div className="flex items-center gap-1 mx-1">
+                    <select
+                        onChange={(e) => {
+                            const size = e.target.value;
+                            if (size === 'default') {
+                                editor.chain().focus().unsetFontSize().run();
+                            } else {
+                                editor.chain().focus().setFontSize(size).run();
+                            }
+                        }}
+                        className={`text-xs p-1.5 rounded-md focus:outline-none cursor-pointer border-none bg-transparent w-[60px] ${isDark
+                            ? 'text-gray-300 hover:text-white hover:bg-white/5'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                            } `}
+                        defaultValue="default"
+                    >
+                        <option value="default" className={isDark ? 'bg-[#1a1b26]' : 'bg-white'}>Size</option>
+                        <option value="8pt" className={isDark ? 'bg-[#1a1b26]' : 'bg-white'}>8</option>
+                        <option value="10pt" className={isDark ? 'bg-[#1a1b26]' : 'bg-white'}>10</option>
+                        <option value="12pt" className={isDark ? 'bg-[#1a1b26]' : 'bg-white'}>12</option>
+                        <option value="14pt" className={isDark ? 'bg-[#1a1b26]' : 'bg-white'}>14</option>
+                        <option value="16pt" className={isDark ? 'bg-[#1a1b26]' : 'bg-white'}>16</option>
+                        <option value="18pt" className={isDark ? 'bg-[#1a1b26]' : 'bg-white'}>18</option>
+                        <option value="24pt" className={isDark ? 'bg-[#1a1b26]' : 'bg-white'}>24</option>
+                        <option value="36pt" className={isDark ? 'bg-[#1a1b26]' : 'bg-white'}>36</option>
+                        <option value="48pt" className={isDark ? 'bg-[#1a1b26]' : 'bg-white'}>48</option>
+                        <option value="72pt" className={isDark ? 'bg-[#1a1b26]' : 'bg-white'}>72</option>
+                    </select>
+                </div>
 
                 <Divider isDark={isDark} />
 
@@ -442,6 +509,17 @@ export default function Editor({ initialContent = '', onContentChange, editorRef
 
                 <Divider isDark={isDark} />
 
+                {/* Tables */}
+                <ToolbarButton
+                    onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+                    title="Insert Table (3x3)"
+                    isDark={isDark}
+                >
+                    <TableIcon size={16} />
+                </ToolbarButton>
+
+                <Divider isDark={isDark} />
+
                 {/* Insert */}
                 <ToolbarButton
                     onClick={handleImageUpload}
@@ -457,9 +535,124 @@ export default function Editor({ initialContent = '', onContentChange, editorRef
                 >
                     <Minus size={16} />
                 </ToolbarButton>
+
+                <Divider isDark={isDark} />
+
+                {/* Zoom Controls */}
+                <div className="flex items-center gap-1 mx-1">
+                    <ToolbarButton
+                        onClick={() => setZoom(Math.max(50, zoom - 10))}
+                        title="Zoom Out"
+                        isDark={isDark}
+                        disabled={zoom <= 50}
+                    >
+                        <ZoomOut size={16} />
+                    </ToolbarButton>
+                    <button
+                        onClick={() => setZoom(100)}
+                        className={`text-xs px-2 py-1 rounded-md ${isDark
+                            ? 'text-gray-400 hover:text-white hover:bg-white/5'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                            }`}
+                        title="Reset Zoom"
+                    >
+                        {zoom}%
+                    </button>
+                    <ToolbarButton
+                        onClick={() => setZoom(Math.min(200, zoom + 10))}
+                        title="Zoom In"
+                        isDark={isDark}
+                        disabled={zoom >= 200}
+                    >
+                        <ZoomIn size={16} />
+                    </ToolbarButton>
+                </div>
             </div>
 
-            {/* Bubble Menu */}
+            {/* Table Bubble Menu */}
+            {editor && (
+                <BubbleMenu
+                    editor={editor}
+                    tippyOptions={{
+                        duration: 100,
+                        placement: 'top',
+                        maxWidth: 'none',
+                    }}
+                    shouldShow={({ editor }) => editor.isActive('table')}
+                    className="z-50"
+                >
+                    <div className={`rounded-xl shadow-lg p-2 flex items-center gap-1 ${isDark ? 'glass shadow-purple-500/10' : 'bg-white border border-gray-200 shadow-gray-200/50'}`}>
+                        <ToolbarButton
+                            onClick={() => editor.chain().focus().addColumnBefore().run()}
+                            title="Add Column Before"
+                            isDark={isDark}
+                            small
+                        >
+                            <div className="flex items-center"><ArrowLeft size={12} /><span className="text-[10px] ml-0.5">+</span></div>
+                        </ToolbarButton>
+                        <ToolbarButton
+                            onClick={() => editor.chain().focus().addColumnAfter().run()}
+                            title="Add Column After"
+                            isDark={isDark}
+                            small
+                        >
+                            <div className="flex items-center"><span className="text-[10px] mr-0.5">+</span><ArrowRight size={12} /></div>
+                        </ToolbarButton>
+                        <ToolbarButton
+                            onClick={() => editor.chain().focus().deleteColumn().run()}
+                            title="Delete Column"
+                            isDark={isDark}
+                            small
+                        >
+                            <div className="flex items-center text-red-400"><Trash2 size={12} /><span className="text-[10px] ml-0.5">Col</span></div>
+                        </ToolbarButton>
+                        <Divider isDark={isDark} />
+                        <ToolbarButton
+                            onClick={() => editor.chain().focus().addRowBefore().run()}
+                            title="Add Row Before"
+                            isDark={isDark}
+                            small
+                        >
+                            <div className="flex items-center"><ArrowUp size={12} /><span className="text-[10px] ml-0.5">+</span></div>
+                        </ToolbarButton>
+                        <ToolbarButton
+                            onClick={() => editor.chain().focus().addRowAfter().run()}
+                            title="Add Row After"
+                            isDark={isDark}
+                            small
+                        >
+                            <div className="flex items-center"><span className="text-[10px] mr-0.5">+</span><ArrowDown size={12} /></div>
+                        </ToolbarButton>
+                        <ToolbarButton
+                            onClick={() => editor.chain().focus().deleteRow().run()}
+                            title="Delete Row"
+                            isDark={isDark}
+                            small
+                        >
+                            <div className="flex items-center text-red-400"><Trash2 size={12} /><span className="text-[10px] ml-0.5">Row</span></div>
+                        </ToolbarButton>
+                        <Divider isDark={isDark} />
+                        <ToolbarButton
+                            onClick={() => editor.chain().focus().mergeCells().run()}
+                            title="Merge Cells"
+                            isDark={isDark}
+                            small
+                        >
+                            <Split size={14} />
+                        </ToolbarButton>
+                        <ToolbarButton
+                            onClick={() => editor.chain().focus().deleteTable().run()}
+                            title="Delete Table"
+                            isDark={isDark}
+                            small
+                        >
+                            <div className="flex items-center text-red-500 font-bold"><Trash2 size={14} /><span className="text-[10px] ml-1">Table</span></div>
+                        </ToolbarButton>
+                    </div>
+                </BubbleMenu>
+            )}
+
+            {/* Text Bubble Menu */}
             <BubbleMenu
                 editor={editor}
                 tippyOptions={{
@@ -467,10 +660,14 @@ export default function Editor({ initialContent = '', onContentChange, editorRef
                     placement: 'top',
                     maxWidth: 'none',
                 }}
+                shouldShow={({ editor, from, to }) => {
+                    // Only show if selection is not empty AND not in a table (or at least let table menu take precedence if we want distinct menus)
+                    // Actually, showing both might be confusing. Let's hide this one if in table.
+                    return !editor.isEmpty && (to - from > 0) && !editor.isActive('table');
+                }}
                 className="z-50"
             >
-                <div className={`rounded-xl shadow-lg p-2 animate-fade-in ${isDark ? 'glass shadow-purple-500/10' : 'bg-white border border-gray-200 shadow-gray-200/50'
-                    }`}>
+                <div className={`rounded-xl shadow-lg p-2 animate-fade-in ${isDark ? 'glass shadow-purple-500/10' : 'bg-white border border-gray-200 shadow-gray-200/50'}`}>
                     {!showAiInput ? (
                         <div className="flex items-center gap-1">
                             <button
@@ -478,8 +675,7 @@ export default function Editor({ initialContent = '', onContentChange, editorRef
                                 disabled={!isOllamaConnected}
                                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${isOllamaConnected
                                     ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-500 hover:to-indigo-500'
-                                    : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                                    }`}
+                                    : 'bg-gray-600 text-gray-400 cursor-not-allowed'}`}
                                 title={isOllamaConnected ? 'AI Magic' : 'Connect to Ollama first'}
                             >
                                 <Sparkles size={16} />
@@ -541,7 +737,7 @@ export default function Editor({ initialContent = '', onContentChange, editorRef
                             {/* Streaming preview */}
                             {isProcessing && streamingResult && (
                                 <div className={`p-2 rounded-lg text-xs max-h-32 overflow-auto ${isDark ? 'bg-purple-500/10 text-purple-200' : 'bg-purple-50 text-purple-800'
-                                    }`}>
+                                    } `}>
                                     <div className="flex items-center gap-1 mb-1 text-purple-400">
                                         <Loader2 size={12} className="animate-spin" />
                                         <span>Preview:</span>
@@ -563,7 +759,7 @@ export default function Editor({ initialContent = '', onContentChange, editorRef
                                         className={`px-2 py-1 text-xs rounded-md transition-colors disabled:opacity-50 ${isDark
                                             ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-200'
                                             : 'bg-purple-100 hover:bg-purple-200 text-purple-700'
-                                            }`}
+                                            } `}
                                     >
                                         {qc.label}
                                     </button>
@@ -583,7 +779,7 @@ export default function Editor({ initialContent = '', onContentChange, editorRef
                                     className={`flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-50 ${isDark
                                         ? 'bg-surface-300/50 border border-purple-500/20 text-white placeholder-gray-500'
                                         : 'bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400'
-                                        }`}
+                                        } `}
                                 />
                                 {isProcessing ? (
                                     <div className="flex items-center gap-2 text-purple-400">
@@ -605,7 +801,7 @@ export default function Editor({ initialContent = '', onContentChange, editorRef
                                                 setAiCommand('');
                                             }}
                                             className={`p-2 rounded-lg transition-colors ${isDark ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-200 hover:bg-gray-300'
-                                                }`}
+                                                } `}
                                         >
                                             <X size={16} />
                                         </button>
@@ -617,13 +813,21 @@ export default function Editor({ initialContent = '', onContentChange, editorRef
                 </div>
             </BubbleMenu>
 
-            {/* Editor Content - A4 Paper Style */}
-            <div className={`flex-1 overflow-auto p-8 transition-colors ${isDark
-                ? 'bg-gradient-to-br from-surface-300/30 to-surface-400/30'
-                : 'bg-gradient-to-br from-gray-100/50 to-gray-50/50'
-                }`}>
-                <div className={`max-w-[850px] mx-auto min-h-[1100px] rounded-lg p-12 paper-shadow print-area visual-pages transition-colors ${isDark ? 'bg-white/[0.02]' : 'bg-white'
+            <div
+                ref={editorContainerRef}
+                className={`flex-1 overflow-auto p-8 transition-colors ${isDark
+                    ? 'bg-gradient-to-br from-surface-300/30 to-surface-400/30'
+                    : 'bg-gradient-to-br from-gray-100/50 to-gray-50/50'
                     }`}>
+                <div
+                    className={`max-w-[850px] mx-auto min-h-[1123px] rounded-lg p-12 paper-shadow print-area visual-pages transition-all origin-top ${isDark ? 'bg-transparent' : 'bg-transparent'
+                        }`}
+                    style={{
+                        transform: `scale(${zoom / 100})`,
+                        marginBottom: `${(zoom / 100 - 1) * 1100}px`,
+                        padding: '48px' // Explicit padding for content margins
+                    }}
+                >
                     <EditorContent editor={editor} className={`h-full ${isDark ? '' : 'editor-light'}`} />
                 </div>
             </div>
@@ -654,7 +858,7 @@ function ToolbarButton({ children, onClick, isActive, disabled, title, small, is
                     : isDark
                         ? 'text-gray-400 hover:text-white hover:bg-white/5'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
+                } `}
         >
             {children}
         </button>
