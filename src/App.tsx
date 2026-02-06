@@ -7,6 +7,7 @@ import { useAppStore } from './store/appStore';
 
 function App() {
     const [documentContent, setDocumentContent] = useState('');
+    const [wordCount, setWordCount] = useState(0);
     const editorRef = useRef<ReturnType<typeof useEditor> | null>(null);
     const { theme } = useAppStore();
 
@@ -110,6 +111,7 @@ function App() {
                     <Editor
                         initialContent=""
                         onContentChange={handleContentChange}
+                        onWordCountChange={setWordCount}
                         editorRef={editorRef}
                     />
                 </main>
@@ -120,7 +122,7 @@ function App() {
                 ? 'text-gray-500 border-purple-500/10'
                 : 'text-gray-400 border-gray-200'
                 }`}>
-                <span>Inkwell v0.1.0</span>
+                <span>Inkwell v0.1.0 • {wordCount} words</span>
                 <span>Powered by Ollama • Running 100% Offline</span>
             </footer>
         </div>
