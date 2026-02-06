@@ -3,10 +3,8 @@ import {
     FileText,
     Download,
     Save,
-    FileDown,
     X,
     FileType,
-    FileJson,
     Printer,
     Moon,
     Sun,
@@ -15,7 +13,7 @@ import {
 } from 'lucide-react';
 import { writeTextFile, writeFile } from '@tauri-apps/plugin-fs';
 import { save, ask } from '@tauri-apps/plugin-dialog';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, ImageRun } from 'docx';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, ImageRun, Table as DocxTable, TableRow as DocxTableRow, TableCell as DocxTableCell, WidthType } from 'docx';
 import mammoth from 'mammoth';
 import * as html2pdfPkg from 'html2pdf.js';
 const html2pdf = (html2pdfPkg as any).default || html2pdfPkg;
@@ -154,77 +152,14 @@ export default function Header({ onExportPdf, documentContent, onLoadContent }: 
         setShowMenu(false);
     }, [onLoadContent]);
 
-    const handleExportMarkdown = useCallback(async () => {
-        try {
-            // Convert HTML to markdown
-            let markdown = documentContent
-                .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
-                .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
-                .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n')
-                .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
-                .replace(/<b>(.*?)<\/b>/gi, '**$1**')
-                .replace(/<em>(.*?)<\/em>/gi, '*$1*')
-                .replace(/<i>(.*?)<\/i>/gi, '*$1*')
-                .replace(/<u>(.*?)<\/u>/gi, '_$1_')
-                .replace(/<li>(.*?)<\/li>/gi, '- $1\n')
-                .replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gi, '> $1\n')
-                .replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n')
-                .replace(/<br\s*\/?>/gi, '\n')
-                .replace(/<[^>]+>/g, '')
-                .replace(/&nbsp;/g, ' ')
-                .replace(/&amp;/g, '&')
-                .replace(/&lt;/g, '<')
-                .replace(/&gt;/g, '>')
-                .trim();
 
-            const sanitizedName = fileName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-
-            const path = await save({
-                defaultPath: `${sanitizedName}.md`,
-                filters: [{ name: 'Markdown', extensions: ['md'] }]
-            });
-
-            if (path) {
-                await writeTextFile(path, markdown);
-            }
-
-            setShowMenu(false);
-        } catch (error) {
-            console.error('Failed to export markdown:', error);
-        }
-    }, [fileName, documentContent]);
-
-    const handleExportJson = useCallback(async () => {
-        try {
-            const data = {
-                title: fileName,
-                content: documentContent,
-                exportedAt: new Date().toISOString(),
-            };
-
-            const sanitizedName = fileName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-
-            const path = await save({
-                defaultPath: `${sanitizedName}.json`,
-                filters: [{ name: 'Inkwell JSON', extensions: ['json'] }]
-            });
-
-            if (path) {
-                await writeTextFile(path, JSON.stringify(data, null, 2));
-            }
-
-            setShowMenu(false);
-        } catch (error) {
-            console.error('Failed to export JSON:', error);
-        }
-    }, [fileName, documentContent]);
 
     const handleExportWord = useCallback(async () => {
         try {
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = documentContent;
 
-            const children: Paragraph[] = [];
+            const children: (Paragraph | DocxTable)[] = [];
 
             // Recursive function to process nodes
             const processNodes = async (childNodes: NodeListOf<ChildNode>, parentRuns: TextRun[] | null = null) => {
@@ -319,33 +254,45 @@ export default function Header({ onExportPdf, documentContent, onLoadContent }: 
                                 break;
                             case 'p':
                                 const runs: TextRun[] = [];
-                                // Process children of P
-                                element.childNodes.forEach((child) => {
-                                    if (child.nodeType === Node.TEXT_NODE) {
-                                        runs.push(new TextRun(child.textContent || ''));
-                                    } else if (child.nodeType === Node.ELEMENT_NODE) {
-                                        const childEl = child as Element;
-                                        const childTag = childEl.tagName.toLowerCase();
-                                        const childStyle = childEl.getAttribute('style') || '';
-                                        const fontMatch = childStyle.match(/font-family:\s*['"]?([^'";]+)/i);
-                                        const colorMatch = childStyle.match(/color:\s*([^;]+)/i);
 
-                                        runs.push(new TextRun({
-                                            text: childEl.textContent || '',
-                                            bold: childTag === 'strong' || childTag === 'b',
-                                            italics: childTag === 'em' || childTag === 'i',
-                                            underline: childTag === 'u' ? {} : undefined,
-                                            font: fontMatch ? fontMatch[1].replace(/['"]/g, '') : undefined,
-                                            color: colorMatch ? colorMatch[1] : undefined,
-                                        }));
+                                // Recursive function to extract formatting from nested elements
+                                const extractRuns = (node: Node): void => {
+                                    if (node.nodeType === Node.TEXT_NODE) {
+                                        const text = node.textContent || '';
+                                        if (text) runs.push(new TextRun(text));
+                                    } else if (node.nodeType === Node.ELEMENT_NODE) {
+                                        const el = node as Element;
+                                        const tag = el.tagName.toLowerCase();
+                                        const style = el.getAttribute('style') || '';
+
+                                        // Extract style properties
+                                        const fontMatch = style.match(/font-family:\s*['"]?([^'";]+)/i);
+                                        const colorMatch = style.match(/color:\s*([^;]+)/i);
+                                        const sizeMatch = style.match(/font-size:\s*(\d+)px/i);
+
+                                        const text = el.textContent || '';
+                                        if (text) {
+                                            runs.push(new TextRun({
+                                                text,
+                                                bold: tag === 'strong' || tag === 'b',
+                                                italics: tag === 'em' || tag === 'i',
+                                                underline: tag === 'u' ? {} : undefined,
+                                                font: fontMatch ? fontMatch[1].replace(/['"]/g, '') : undefined,
+                                                color: colorMatch ? colorMatch[1] : undefined,
+                                                size: sizeMatch ? parseInt(sizeMatch[1]) * 2 : undefined,
+                                            }));
+                                        }
                                     }
-                                });
-                                // Avoid empty paragraphs unless intend spacing
+                                };
+
+                                // Process all child nodes
+                                element.childNodes.forEach(child => extractRuns(child));
+
                                 if (runs.length > 0 || textContent.trim()) {
                                     children.push(new Paragraph({
                                         children: runs.length > 0 ? runs : [new TextRun(textContent)],
                                         alignment,
-                                        spacing: { after: 200, line: 276 } // 1.15 spacing approx
+                                        spacing: { after: 200, line: 276 }
                                     }));
                                 }
                                 break;
@@ -368,6 +315,35 @@ export default function Header({ onExportPdf, documentContent, onLoadContent }: 
                             case 'div':
                                 // Recursive for div containers
                                 await processNodes(element.childNodes, null);
+                                break;
+                            case 'table':
+                                // Handle table export
+                                const tableElement = element as HTMLTableElement;
+                                const tableRows: DocxTableRow[] = [];
+
+                                for (const row of Array.from(tableElement.rows)) {
+                                    const cells: DocxTableCell[] = [];
+                                    for (const cell of Array.from(row.cells)) {
+                                        const isHeader = cell.tagName.toLowerCase() === 'th';
+                                        cells.push(new DocxTableCell({
+                                            children: [new Paragraph({
+                                                children: [new TextRun({
+                                                    text: cell.textContent || '',
+                                                    bold: isHeader,
+                                                })],
+                                            })],
+                                            width: { size: Math.floor(100 / row.cells.length), type: WidthType.PERCENTAGE },
+                                        }));
+                                    }
+                                    tableRows.push(new DocxTableRow({ children: cells }));
+                                }
+
+                                if (tableRows.length > 0) {
+                                    children.push(new DocxTable({
+                                        rows: tableRows,
+                                        width: { size: 100, type: WidthType.PERCENTAGE },
+                                    }));
+                                }
                                 break;
                             default:
                                 // Try recursing
@@ -539,7 +515,7 @@ export default function Header({ onExportPdf, documentContent, onLoadContent }: 
                         }`}
                     title="Import file (Markdown, HTML, JSON)"
                 >
-                    <Upload size={16} />
+                    <Download size={16} />
                     <span>Import</span>
                 </button>
 
@@ -582,7 +558,7 @@ export default function Header({ onExportPdf, documentContent, onLoadContent }: 
                             }`}
                         title="More export options"
                     >
-                        <Download size={16} />
+                        <Upload size={16} />
                         <span>Export</span>
                         {showMenu ? <X size={14} /> : null}
                     </button>
@@ -622,32 +598,7 @@ export default function Header({ onExportPdf, documentContent, onLoadContent }: 
                                     <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>.docx</div>
                                 </div>
                             </button>
-                            <button
-                                onClick={handleExportMarkdown}
-                                className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${isDark
-                                    ? 'text-gray-300 hover:text-white hover:bg-white/5'
-                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                                    }`}
-                            >
-                                <FileDown size={16} className="text-green-400" />
-                                <div className="text-left">
-                                    <div>Markdown</div>
-                                    <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>.md</div>
-                                </div>
-                            </button>
-                            <button
-                                onClick={handleExportJson}
-                                className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${isDark
-                                    ? 'text-gray-300 hover:text-white hover:bg-white/5'
-                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                                    }`}
-                            >
-                                <FileJson size={16} className="text-yellow-400" />
-                                <div className="text-left">
-                                    <div>JSON</div>
-                                    <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>.json with metadata</div>
-                                </div>
-                            </button>
+
                         </div>
                     )}
                 </div>
