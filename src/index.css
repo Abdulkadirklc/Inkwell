@@ -114,6 +114,120 @@ body {
   line-height: 1.4;
 }
 
+/* Removed duplicate @tailwind directives - they are at top of file */
+
+/* Custom scrollbar for dark mode */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: rgba(15, 15, 25, 0.5);
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #818cf8 0%, #a78bfa 100%);
+}
+
+/* Custom scrollbar for light mode */
+.light ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.light ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #a78bfa 0%, #8b5cf6 100%);
+  border-radius: 4px;
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
+/* Base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.dark body {
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  color: #e2e8f0;
+}
+
+.light body {
+  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 50%, #f1f5f9 100%);
+  color: #1e293b;
+}
+
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Editor styles - Dark Mode */
+.dark .tiptap {
+  outline: none;
+  min-height: 100%;
+}
+
+.dark .tiptap:focus {
+  outline: none;
+}
+
+.dark .tiptap>*+* {
+  margin-top: 0.75em;
+}
+
+.dark .tiptap h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
+}
+
+.dark .tiptap h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.dark .tiptap h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
 .dark .tiptap p {
   font-size: 1.1rem;
   color: #cbd5e1;
@@ -121,8 +235,7 @@ body {
 }
 
 .dark .tiptap strong {
-  font-weight: 600;
-  color: #f8fafc;
+  font-weight: 700;
 }
 
 .dark .tiptap em {
@@ -227,8 +340,7 @@ body {
 
 .light .tiptap strong,
 .editor-light .tiptap strong {
-  font-weight: 600;
-  color: #1e293b;
+  font-weight: 700;
 }
 
 .light .tiptap em,
@@ -605,7 +717,6 @@ body {
 
 .light .tiptap strong,
 .editor-light .tiptap strong {
-  color: #020617;
   font-weight: 700;
 }
 
@@ -614,12 +725,147 @@ body {
   background-color: #ffffff !important;
   color: #000000 !important;
 }
-/* Visual Page Breaks */
-.visual-pages {
-  background-image: linear-gradient(to bottom, transparent calc(297mm - 1px), #e5e7eb calc(297mm - 1px), #e5e7eb 297mm);
-  background-size: 100% 297mm;
-  background-repeat: repeat-y;
+
+
+
+/* Infinite page - no visual breaks */
+
+/* Print styles - automatic A4 page breaks */
+@media print {
+  @page {
+    size: A4;
+    margin: 1.5cm;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    overflow: visible !important;
+  }
+
+  /* Reset all parent containers */
+  * {
+    overflow: visible !important;
+  }
+
+  .print-area {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    margin-bottom: 0 !important;
+    padding: 1cm !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: white !important;
+    color: black !important;
+    min-height: auto !important;
+    height: auto !important;
+    transform: none !important;
+    overflow: visible !important;
+  }
+
+  /* Reset EditorContent wrapper */
+  .ProseMirror {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Allow content to break across pages */
+  .tiptap {
+    orphans: 3;
+    widows: 3;
+  }
+
+  .tiptap h1,
+  .tiptap h2,
+  .tiptap h3 {
+    page-break-after: avoid;
+    break-after: avoid-page;
+  }
+
+  .tiptap p,
+  .tiptap li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  .tiptap table {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .tiptap img {
+    max-width: 100%;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Hide UI elements */
+  button,
+  .toolbar,
+  .bubble-menu,
+  .sidebar {
+    display: none !important;
+  }
 }
-.dark .visual-pages {
-  background-image: linear-gradient(to bottom, transparent calc(297mm - 1px), rgba(255,255,255,0.1) calc(297mm - 1px), rgba(255,255,255,0.1) 297mm);
+
+
+/* Table Styles */
+.tiptap table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+.tiptap table td,
+.tiptap table th {
+  min-width: 1em;
+  border: 2px solid #ced4da;
+  padding: 3px 5px;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.dark .tiptap table td,
+.dark .tiptap table th {
+  border-color: #4b5563;
+}
+
+.tiptap table th {
+  font-weight: bold;
+  text-align: left;
+  background-color: #f1f3f5;
+}
+
+.dark .tiptap table th {
+  background-color: #1f2937;
+}
+
+.tiptap .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(200, 200, 255, 0.4);
+  pointer-events: none;
+}
+
+.tiptap .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background-color: #adf;
+  pointer-events: none;
+}
+
+.tableWrapper {
+  overflow-x: auto;
 }
