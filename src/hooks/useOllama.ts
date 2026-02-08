@@ -587,19 +587,20 @@ Respond with a JSON object:
                 : (fullContextSummary ? '\n\nNote: Documents available. ' + (plannerThought ? `Planner thought: ${plannerThought}` : '') : '');
 
             const agenticSystemPrompt = `You are an AI writing assistant that can edit documents directly.
-
+            
 DEFINITIONS:
 - "Canvas" = The document you're editing
-- "Write on canvas" = Use tools to modify the document
+- "Action" = Use one of the available tools below to modify the document
 
-AVAILABLE TOOLS:
+AVAILABLE TOOLS (Use ONLY these):
 - reply: Answer questions without editing. Params: {"message": "your answer"}
-- append_text: Add text at the end. Params: {"text": "content"}
-- prepend_text: Add text at the beginning. Params: {"text": "content"}
-- replace_all: Replace entire document. Params: {"text": "new content"}
+- append_text: Add text at the end of the document. Params: {"text": "content"}
+- prepend_text: Add text at the beginning of the document. Params: {"text": "content"}
+- replace_all: Replace the entire document content. Params: {"text": "new content"}
 - add_title: Add a title. Params: {"title": "text"}
-- edit_first_paragraph: Edit first paragraph. Params: {"new_content": "text"}
-- edit_last_paragraph: Edit last paragraph. Params: {"new_content": "text"}
+- edit_first_paragraph: Edit the first paragraph. Params: {"new_content": "text"}
+- edit_last_paragraph: Edit the last paragraph. Params: {"new_content": "text"}
+- add_table: Add a table. Params: {"headers": [], "rows": [[]], "caption": ""}
 - add_table: Add a table. Params: {"headers": [], "rows": [[]], "caption": ""}
 
 Current document preview: "${documentContent.slice(0, 300).replace(/"/g, '\\"').replace(/\n/g, ' ')}..."
@@ -618,12 +619,13 @@ RULES:
    - Bold: <b>important</b>
 4. Write complete, well-formatted content. Do NOT just copy context verbatim.
 
-RESPOND WITH JSON ONLY:
-{"thought": "(optional) reasoning", "tool": "tool_name", "text": "<h2>Title</h2><p>Content...</p>", "message": "confirmation"}
+RESPOND WITH JSON ONLY. Use the correct parameter name for the chosen tool (e.g., "text" or "new_content"):
+{"thought": "(optional) reasoning", "tool": "tool_name", "text": "content...", "message": "confirmation"}
 
 Examples:
-{"tool": "reply", "message": "This document discusses competitive programming techniques and algorithms."}
-{"tool": "append_text", "text": "<h2>Summary</h2><p>This handbook covers fundamental algorithms and data structures for competitive programming.</p>", "message": "Added a summary section."}`;
+{"tool": "reply", "message": "This document discusses..."}
+{"tool": "append_text", "text": "<h2>Summary</h2><p>...</p>", "message": "Added summary."}
+{"tool": "edit_last_paragraph", "new_content": "<p>New conclusion...</p>", "message": "Updated conclusion."}`;
 
             const fullMessages: OllamaChatMessage[] = [
                 { role: 'system', content: agenticSystemPrompt },
@@ -767,7 +769,7 @@ Examples:
                         }
 
                         // 3. Optimistic Content Streaming
-                        if (['append_text', 'replace_all', 'edit_first_paragraph', 'edit_last_paragraph', 'prepend_text', 'add_table'].includes(detectedTool)) {
+                        if (['append_text', 'replace_all', 'prepend_text'].includes(detectedTool)) {
                             // Match text, new_content, replacement_content
                             // Use non-greedy match until unescaped quote
                             const contentMatch = fullText.match(/"(text|new_content|replacement_content)"\s*:\s*"((?:[^"\\]|\\.)*)/s);
@@ -789,11 +791,18 @@ Examples:
                                     // Stream directly to canvas (right side)
                                     lastMessage = 'Writing...';
 
+                                    let streamContent = accumulatedContent;
+                                    if (detectedTool === 'append_text') {
+                                        streamContent = documentContent + '\n' + accumulatedContent;
+                                    } else if (detectedTool === 'prepend_text') {
+                                        streamContent = accumulatedContent + '\n' + documentContent;
+                                    }
+
                                     onChunk({
-                                        action: 'rewrite', // Stream directly to canvas
+                                        action: 'rewrite', // Always use rewrite for preview to ensure consistency
                                         message: lastMessage,
                                         thought: accumulatedThought,
-                                        content: accumulatedContent, // Live update canvas
+                                        content: streamContent, // Live update canvas with FULL content
                                     }, false);
                                 }
                             }
@@ -843,6 +852,7 @@ Examples:
                                 lastMessage = result.message;
                             } else {
                                 // Now we apply to canvas
+                                // executeTool acts on the *original* documentContent and returns the FULL new HTML
                                 lastAction = 'rewrite';
                                 lastContent = result.newHtml || documentContent;
                                 lastMessage = result.message;
@@ -920,7 +930,10 @@ Selected text to modify:
 
 Command: ${command}
 
-IMPORTANT: Respond ONLY with the modified text. Do not include any explanations, quotes, or markdown formatting. The response will directly replace the selected text.
+IMPORTANT: You are writing for a Rich Text Editor.
+- Use HTML formatting for styling: <b>bold</b>, <i>italic</i>, <ul><li>lists</li></ul>, <h1>headings</h1>, etc.
+- If the user asks for a specific format (e.g., table, list), provide it.
+- Respond ONLY with the modified text/content. Do not include conversational filler or explanations.
 `.trim();
 
             try {

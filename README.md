@@ -50,8 +50,8 @@ Inkwell is a desktop WYSIWYG editor that brings the power of AI to your writing 
    - Simplify
    - Make Professional
    - Or any custom command!
-4. Watch as the AI **streams** the response in real-time
-5. Your selected text is automatically replaced
+4. Watch as the AI **streams** the response in real-time directly on the canvas
+5. Your selected text is automatically replaced, **preserving rich formatting** (Bold, Lists, Headings, etc.)
 
 ### 📚 Context Library (RAG)
 New in v0.2! Give your AI knowledge about your specific documents.

@@ -186,34 +186,37 @@ export function executeTool(
                 };
 
             case 'edit_first_paragraph':
-                if (!params.new_content || typeof params.new_content !== 'string') {
+                const contentFirst = params.new_content || params.text;
+                if (!contentFirst || typeof contentFirst !== 'string') {
                     return { success: false, message: 'No content provided to edit - please specify what to write' };
                 }
                 return {
                     success: true,
-                    newHtml: replaceParagraph(html, 0, params.new_content),
+                    newHtml: replaceParagraph(html, 0, contentFirst),
                     message: userSummary || 'Updated introduction paragraph'
                 };
 
             case 'edit_last_paragraph': {
-                if (!params.new_content || typeof params.new_content !== 'string') {
+                const contentLast = params.new_content || params.text;
+                if (!contentLast || typeof contentLast !== 'string') {
                     return { success: false, message: 'No content provided to edit - please specify what to write' };
                 }
                 const { paragraphs } = parseDocumentSegments(html);
                 return {
                     success: true,
-                    newHtml: replaceParagraph(html, paragraphs.length - 1, params.new_content),
+                    newHtml: replaceParagraph(html, paragraphs.length - 1, contentLast),
                     message: userSummary || 'Updated conclusion paragraph'
                 };
             }
 
             case 'edit_paragraph':
-                if (!params.new_content || typeof params.new_content !== 'string') {
+                const contentSpecific = params.new_content || params.text;
+                if (!contentSpecific || typeof contentSpecific !== 'string') {
                     return { success: false, message: 'No content provided to edit - please specify what to write' };
                 }
                 return {
                     success: true,
-                    newHtml: replaceParagraph(html, params.paragraph_number - 1, params.new_content),
+                    newHtml: replaceParagraph(html, params.paragraph_number - 1, contentSpecific),
                     message: userSummary || `Edited paragraph ${params.paragraph_number}`
                 };
 

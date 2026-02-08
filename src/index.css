@@ -240,7 +240,6 @@ body {
 
 .dark .tiptap em {
   font-style: italic;
-  color: #a5b4fc;
 }
 
 .dark .tiptap blockquote {
@@ -346,7 +345,6 @@ body {
 .light .tiptap em,
 .editor-light .tiptap em {
   font-style: italic;
-  color: #7c3aed;
 }
 
 .light .tiptap blockquote,

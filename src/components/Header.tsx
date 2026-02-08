@@ -35,11 +35,11 @@ export default function Header({ onExportPdf, documentContent, onLoadContent }: 
 
     const handleNewDocument = useCallback(async () => {
         if (documentContent && documentContent.length > 20) {
-            const confirmed = await ask('Yeni belge oluşturmak istiyor musunuz? Kaydedilmeyen veriler silinebilir.', {
-                title: 'Yeni Belge',
+            const confirmed = await ask('Are you sure you want to create a new document? Unsaved changes will be lost.', {
+                title: 'New Document',
                 kind: 'warning',
-                okLabel: 'Evet, Temizle',
-                cancelLabel: 'İptal'
+                okLabel: 'Yes, Create New',
+                cancelLabel: 'Cancel'
             });
             if (!confirmed) return;
         }

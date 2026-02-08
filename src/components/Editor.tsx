@@ -60,9 +60,12 @@ export default function Editor({ initialContent = '', onContentChange, onWordCou
     const [processingStatus, setProcessingStatus] = useState('');
     const [streamingResult, setStreamingResult] = useState('');
     const [textColor, setTextColor] = useState('#000000');
+    const [savedColor, setSavedColor] = useState('#000000');
+    const [isColorActive, setIsColorActive] = useState(false);
     const [zoom, setZoom] = useState(100);
     const aiInputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const colorInputRef = useRef<HTMLInputElement>(null);
     const editorContainerRef = useRef<HTMLDivElement>(null);
 
     const { processSelectionStream } = useOllama();
@@ -99,6 +102,7 @@ export default function Editor({ initialContent = '', onContentChange, onWordCou
         editorProps: {
             attributes: {
                 class: isDark ? 'prose prose-invert max-w-none focus:outline-none' : 'prose max-w-none focus:outline-none',
+                spellcheck: 'false',
             },
             handleDrop: (_view, event, _slice, moved) => {
                 if (!moved && event.dataTransfer?.files?.length) {
@@ -154,6 +158,24 @@ export default function Editor({ initialContent = '', onContentChange, onWordCou
             const text = editor.getText();
             const words = text.trim() ? text.trim().split(/\s+/).length : 0;
             onWordCountChange?.(words);
+
+            // Update color state
+            const color = editor.getAttributes('textStyle').color;
+            if (color) {
+                setTextColor(color);
+                setIsColorActive(true);
+            } else {
+                setIsColorActive(false);
+            }
+        },
+        onSelectionUpdate: ({ editor }) => {
+            const color = editor.getAttributes('textStyle').color;
+            if (color) {
+                setTextColor(color);
+                setIsColorActive(true);
+            } else {
+                setIsColorActive(false);
+            }
         },
     });
 
@@ -169,6 +191,20 @@ export default function Editor({ initialContent = '', onContentChange, onWordCou
             aiInputRef.current.focus();
         }
     }, [showAiInput]);
+
+    // Update editor attributes
+    useEffect(() => {
+        if (editor) {
+            editor.setOptions({
+                editorProps: {
+                    attributes: {
+                        spellcheck: 'false',
+                        class: isDark ? 'prose prose-invert max-w-none focus:outline-none' : 'prose max-w-none focus:outline-none',
+                    }
+                }
+            });
+        }
+    }, [editor, isDark]);
 
     // Ctrl+Wheel zoom handler
     useEffect(() => {
@@ -210,8 +246,24 @@ export default function Editor({ initialContent = '', onContentChange, onWordCou
     const handleColorChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const color = e.target.value;
         setTextColor(color);
+        setSavedColor(color);
         editor?.chain().focus().setColor(color).run();
+        setIsColorActive(true);
     }, [editor]);
+
+    const handleColorButtonClick = useCallback(() => {
+        if (isColorActive) {
+            editor?.chain().focus().unsetColor().run();
+            setIsColorActive(false);
+        } else {
+            editor?.chain().focus().setColor(savedColor).run();
+            setTextColor(savedColor);
+            setIsColorActive(true);
+            setTimeout(() => {
+                colorInputRef.current?.click();
+            }, 0);
+        }
+    }, [editor, isColorActive, savedColor]);
 
     const handleFontChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
         const font = e.target.value;
@@ -249,6 +301,10 @@ export default function Editor({ initialContent = '', onContentChange, onWordCou
         };
 
         try {
+            // Store the start position for streaming insertion
+            const startPos = from;
+            let isFirstChunk = true;
+
             // Use streaming for real-time response
             await processSelectionStream(
                 selectedText,
@@ -256,25 +312,38 @@ export default function Editor({ initialContent = '', onContentChange, onWordCou
                 (chunk, done) => {
                     // Strip think tags from the streaming result
                     const cleanChunk = stripThinkTags(chunk);
+
+                    // Update preview state (optional, but good for debug)
                     setStreamingResult(cleanChunk);
 
-                    if (done) {
-                        setProcessingStatus('Applying...');
-                        // Replace the selected text with the cleaned AI response
-                        const finalResult = stripThinkTags(chunk);
-                        if (finalResult) {
-                            editor
-                                .chain()
-                                .focus()
-                                .deleteSelection()
-                                .insertContent(finalResult)
-                                .run();
+                    if (cleanChunk) {
+                        // If it's the first chunk, delete the original selection
+                        if (isFirstChunk) {
+                            editor.chain().focus().deleteSelection().run();
+                            isFirstChunk = false;
                         }
 
+                        // Select the range from the start of our insertion to the current cursor (end of insertion)
+                        // Then replace it with the new accumulated chunk
+                        const currentPos = editor.state.selection.to;
+
+                        // Ensure we are selecting a valid range. 
+                        // In the first iteration after delete, startPos == currentPos (empty)
+                        // In subsequent iterations, currentPos > startPos
+
+                        editor
+                            .chain()
+                            .focus()
+                            .setTextSelection({ from: startPos, to: currentPos })
+                            .insertContent(cleanChunk) // insertContent handles HTML parsing
+                            .run();
+                    }
+
+                    if (done) {
+                        setProcessingStatus('');
                         setAiCommand('');
                         setShowAiInput(false);
                         setIsProcessing(false);
-                        setProcessingStatus('');
                         setStreamingResult('');
                     }
                 },
@@ -396,18 +465,25 @@ export default function Editor({ initialContent = '', onContentChange, onWordCou
                 </ToolbarButton>
 
                 <div className="flex items-center gap-1 mx-1">
-                    <label className={`flex items-center justify-center p-1.5 rounded-md cursor-pointer transition-colors ${isDark
-                        ? 'text-gray-400 hover:text-white hover:bg-white/5'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                        } `}>
-                        <Type size={16} style={{ color: textColor }} />
-                        <input
-                            type="color"
-                            value={textColor}
-                            onChange={handleColorChange}
-                            className="w-0 h-0 opacity-0 absolute"
-                        />
-                    </label>
+                    <button
+                        onClick={handleColorButtonClick}
+                        className={`flex items-center justify-center p-1.5 rounded-md cursor-pointer transition-colors ${isColorActive
+                            ? 'bg-purple-600 text-white'
+                            : isDark
+                                ? 'text-gray-400 hover:text-white hover:bg-white/5'
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                            } `}
+                        title={isColorActive ? "Remove Color" : "Text Color"}
+                    >
+                        <Type size={16} style={{ color: isColorActive ? textColor : undefined }} />
+                    </button>
+                    <input
+                        ref={colorInputRef}
+                        type="color"
+                        value={textColor}
+                        onChange={handleColorChange}
+                        className="w-0 h-0 opacity-0 absolute pointer-events-none"
+                    />
                 </div>
 
                 <Divider isDark={isDark} />

@@ -122,7 +122,7 @@ function App() {
                 ? 'text-gray-500 border-purple-500/10'
                 : 'text-gray-400 border-gray-200'
                 }`}>
-                <span>Inkwell v0.1.0 • {wordCount} words</span>
+                <span>Inkwell v0.2.0 • {wordCount} words</span>
                 <span>Powered by Ollama • Running 100% Offline</span>
             </footer>
         </div>
