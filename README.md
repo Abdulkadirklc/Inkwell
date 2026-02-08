@@ -19,7 +19,7 @@ Inkwell is a desktop WYSIWYG editor that brings the power of AI to your writing 
 - ✅ **Cross-Platform** - Windows, macOS, and Linux support
 
 <p align="center">
-  <img src="app_images/interface.png" alt="Inkwell Interface" width="800">
+  <img src="app_images/interface_v2.png" alt="Inkwell Interface" width="800">
 </p>
 
 ## ✨ Features
@@ -146,11 +146,11 @@ New in v0.2! Give your AI knowledge about your specific documents.
 #### Linux
 ```bash
 # Debian/Ubuntu (.deb)
-sudo dpkg -i inkwell_0.1.0_amd64.deb
+sudo dpkg -i inkwell_0.2.0_amd64.deb
 
 # Arch Linux (.AppImage)
-chmod +x Inkwell-0.1.0.AppImage
-./Inkwell-0.1.0.AppImage
+chmod +x Inkwell-0.2.0.AppImage
+./Inkwell-0.2.0.AppImage
 ```
 
 ---
