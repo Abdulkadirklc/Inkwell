@@ -612,12 +612,8 @@ User says: "${lastUserMsg?.content}"
 RULES:
 1. Questions → Use 'reply' tool. Put your answer in the "message" field.
 2. Edit requests → Use editing tool. Write ORIGINAL content in your own words.
-3. ALWAYS use HTML formatting for document edits:
-   - Headings: <h1>, <h2>, <h3>
-   - Paragraphs: <p>Your text here</p>
-   - Lists: <ul><li>Item</li></ul> or <ol><li>Item</li></ol>
-   - Bold: <b>important</b>
-4. Write complete, well-formatted content. Do NOT just copy context verbatim.
+3. Use HTML tags for formatting where necessary (e.g., <h1>, <b>, <ul>).
+4. Write structured, well-formatted content.
 
 RESPOND WITH JSON ONLY. Use the correct parameter name for the chosen tool (e.g., "text" or "new_content"):
 {"thought": "(optional) reasoning", "tool": "tool_name", "text": "content...", "message": "confirmation"}
