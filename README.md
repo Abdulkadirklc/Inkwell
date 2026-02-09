@@ -193,7 +193,7 @@ chmod +x Inkwell-0.2.0.AppImage
 
 1. **Auto-Save**: You don't need to do anything! Inkwell saves automatically.
 2. **Save (Ctrl+S)**: Manually save to Documents folder as HTML if you wish.
-3. **Export Menu**: Choose Word, Markdown, JSON, or **PDF Document**.
+3. **Export Menu**: Choose Word or **PDF Document**.
 4. **New Document**: Click "New" to start fresh (don't worry, it asks for confirmation).
 
 ---
@@ -210,7 +210,7 @@ chmod +x Inkwell-0.2.0.AppImage
 
 ```bash
 # Clone the repository
-git clone https://github.com/Abdulkadirklc/inkwell.git
+git clone https://github.com/Abdulkadirklc/Inkwell.git
 cd inkwell
 
 # Install dependencies
@@ -242,40 +242,7 @@ To share the app with friends or colleagues:
 
 ---
 
-## 📁 File Formats
 
-### Native Format (.html)
-Inkwell saves documents as HTML files, preserving all formatting.
-
-### Word Export (.docx)
-Full formatting support including:
-- **Images** (with resizing)
-- Headings (H1, H2, H3)
-- Bold, Italic, Underline
-- Text alignment
-- Lists
-- Blockquotes
-
-### Markdown Export (.md)
-Converts to standard Markdown:
-```markdown
-# Heading 1
-## Heading 2
-**Bold** and *italic* text
-- Bullet points
-> Blockquotes
-```
-
-### JSON Export
-```json
-{
-  "title": "My Document",
-  "content": "<p>HTML content...</p>",
-  "exportedAt": "2024-01-01T12:00:00.000Z"
-}
-```
-
----
 
 ## 📄 License
 
