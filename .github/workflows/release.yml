@@ -52,7 +52,7 @@ jobs:
           workspaces: './src-tauri -> target'
 
       - name: Generate icons
-        run: npx -y @tauri-apps/cli icon src-tauri/icons/icon.png
+        run: npx -y @tauri-apps/cli icon src-tauri/icons/icon.svg
 
       - uses: tauri-apps/tauri-action@v0
         env:
