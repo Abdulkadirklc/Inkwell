@@ -255,38 +255,87 @@ export default function Header({ onExportPdf, documentContent, onLoadContent }: 
                             case 'p':
                                 const runs: TextRun[] = [];
 
-                                // Recursive function to extract formatting from nested elements
-                                const extractRuns = (node: Node): void => {
+                                // Formatting state inherited from parent elements
+                                interface FormatState {
+                                    bold: boolean;
+                                    italics: boolean;
+                                    underline: boolean;
+                                    font?: string;
+                                    color?: string;
+                                    size?: number; // half-points for docx
+                                }
+
+                                // Recursive function that walks the entire DOM tree,
+                                // accumulating formatting from each level
+                                const extractRuns = (node: Node, inherited: FormatState): void => {
                                     if (node.nodeType === Node.TEXT_NODE) {
                                         const text = node.textContent || '';
-                                        if (text) runs.push(new TextRun(text));
-                                    } else if (node.nodeType === Node.ELEMENT_NODE) {
-                                        const el = node as Element;
-                                        const tag = el.tagName.toLowerCase();
-                                        const style = el.getAttribute('style') || '';
-
-                                        // Extract style properties
-                                        const fontMatch = style.match(/font-family:\s*['"]?([^'";]+)/i);
-                                        const colorMatch = style.match(/color:\s*([^;]+)/i);
-                                        const sizeMatch = style.match(/font-size:\s*(\d+)px/i);
-
-                                        const text = el.textContent || '';
                                         if (text) {
                                             runs.push(new TextRun({
                                                 text,
-                                                bold: tag === 'strong' || tag === 'b',
-                                                italics: tag === 'em' || tag === 'i',
-                                                underline: tag === 'u' ? {} : undefined,
-                                                font: fontMatch ? fontMatch[1].replace(/['"]/g, '') : undefined,
-                                                color: colorMatch ? colorMatch[1] : undefined,
-                                                size: sizeMatch ? parseInt(sizeMatch[1]) * 2 : undefined,
+                                                bold: inherited.bold || undefined,
+                                                italics: inherited.italics || undefined,
+                                                underline: inherited.underline ? {} : undefined,
+                                                font: inherited.font,
+                                                color: inherited.color,
+                                                size: inherited.size,
                                             }));
                                         }
+                                    } else if (node.nodeType === Node.ELEMENT_NODE) {
+                                        const el = node as Element;
+                                        const tag = el.tagName.toLowerCase();
+                                        const elStyle = el.getAttribute('style') || '';
+
+                                        // Build new format state by merging parent's state with this element's
+                                        const fmt: FormatState = { ...inherited };
+
+                                        // Tag-based formatting
+                                        if (tag === 'strong' || tag === 'b') fmt.bold = true;
+                                        if (tag === 'em' || tag === 'i') fmt.italics = true;
+                                        if (tag === 'u') fmt.underline = true;
+
+                                        // Style-based formatting (override parent if present)
+                                        const fontMatch = elStyle.match(/font-family:\s*['"]?([^'";]+)/i);
+                                        if (fontMatch) fmt.font = fontMatch[1].replace(/['"]/g, '').trim();
+
+                                        const colorMatch = elStyle.match(/color:\s*([^;]+)/i);
+                                        if (colorMatch) {
+                                            let c = colorMatch[1].trim();
+                                            // Convert rgb(r,g,b) to hex for docx compatibility
+                                            const rgbMatch = c.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
+                                            if (rgbMatch) {
+                                                const r = parseInt(rgbMatch[1]).toString(16).padStart(2, '0');
+                                                const g = parseInt(rgbMatch[2]).toString(16).padStart(2, '0');
+                                                const b = parseInt(rgbMatch[3]).toString(16).padStart(2, '0');
+                                                c = `${r}${g}${b}`;
+                                            }
+                                            // Strip leading # if present
+                                            fmt.color = c.replace(/^#/, '');
+                                        }
+
+                                        // font-size: support both px and pt
+                                        const sizePxMatch = elStyle.match(/font-size:\s*(\d+(?:\.\d+)?)px/i);
+                                        const sizePtMatch = elStyle.match(/font-size:\s*(\d+(?:\.\d+)?)pt/i);
+                                        if (sizePtMatch) {
+                                            fmt.size = Math.round(parseFloat(sizePtMatch[1]) * 2); // pt → half-points
+                                        } else if (sizePxMatch) {
+                                            fmt.size = Math.round(parseFloat(sizePxMatch[1]) * 1.5); // px → ~half-points
+                                        }
+
+                                        // Handle <br> as line break
+                                        if (tag === 'br') {
+                                            runs.push(new TextRun({ break: 1 }));
+                                            return;
+                                        }
+
+                                        // Recurse into children with accumulated formatting
+                                        el.childNodes.forEach(child => extractRuns(child, fmt));
                                     }
                                 };
 
-                                // Process all child nodes
-                                element.childNodes.forEach(child => extractRuns(child));
+                                // Start recursion with empty formatting state
+                                const defaultFmt: FormatState = { bold: false, italics: false, underline: false };
+                                element.childNodes.forEach(child => extractRuns(child, defaultFmt));
 
                                 if (runs.length > 0 || textContent.trim()) {
                                     children.push(new Paragraph({
