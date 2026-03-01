@@ -112,7 +112,7 @@ export default function Editor({ initialContent = '', onContentChange, onWordCou
                         const reader = new FileReader();
                         reader.onload = () => {
                             const src = reader.result as string;
-                            editor?.chain().focus().setImage({ src }).run();
+                            (editor?.chain().focus() as any).setImage({ src }).run();
                         };
                         reader.readAsDataURL(file);
                         return true;
@@ -131,7 +131,7 @@ export default function Editor({ initialContent = '', onContentChange, onWordCou
                                 const reader = new FileReader();
                                 reader.onload = () => {
                                     const src = reader.result as string;
-                                    editor?.chain().focus().setImage({ src }).run();
+                                    (editor?.chain().focus() as any).setImage({ src }).run();
                                 };
                                 reader.readAsDataURL(file);
                                 return true;
@@ -233,7 +233,7 @@ export default function Editor({ initialContent = '', onContentChange, onWordCou
             const reader = new FileReader();
             reader.onload = () => {
                 const src = reader.result as string;
-                editor?.chain().focus().setImage({ src }).run();
+                (editor?.chain().focus() as any).setImage({ src }).run();
             };
             reader.readAsDataURL(file);
         }
